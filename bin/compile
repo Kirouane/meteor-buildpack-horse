@@ -9,9 +9,6 @@ set -e
 # debug verbosely.
 #set -x
 
-echo "CUSTOM"
-exit 1
-
 # Load config vars into environment (from https://devcenter.heroku.com/articles/buildpack-api)
 export_env_dir() {
   env_dir=$1
@@ -44,6 +41,23 @@ if [ -n "$BUILDPACK_CLEAR_CACHE" ]; then
   echo "-----> Clearing cache dir."
   rm -rf "$CACHE_DIR/*"
 fi
+
+
+# Check if the SSH_KEY environment variable is set
+if [ -n "$SSH_KEY" ]; then
+    echo "SSH_KEY found, setting up SSH key..."
+
+    mkdir -p ~/.ssh
+    echo "$SSH_KEY" > ~/.ssh/id_rsa
+    chmod 600 ~/.ssh/id_rsa
+    chmod 700 ~/.ssh
+    echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile=/dev/null" > ~/.ssh/config
+
+    echo "SSH key setup complete."
+else
+    echo "No SSH_KEY found, skipping SSH key setup."
+fi
+
 
 #
 # Find the meteor app ($APP_SOURCE_DIR).
