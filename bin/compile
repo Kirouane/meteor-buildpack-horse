@@ -42,7 +42,6 @@ if [ -n "$BUILDPACK_CLEAR_CACHE" ]; then
   rm -rf "$CACHE_DIR/*"
 fi
 
-
 # Check if the SSH_KEY environment variable is set
 if [ -n "$SSH_KEY" ]; then
     echo "SSH_KEY found, setting up SSH key..."
@@ -58,7 +57,6 @@ else
     echo "No SSH_KEY found, skipping SSH key setup."
 fi
 
-
 #
 # Find the meteor app ($APP_SOURCE_DIR).
 #
@@ -70,6 +68,25 @@ APP_SOURCE_DIR="${APP_CHECKOUT_DIR}"
 if [ -n "$METEOR_APP_DIR" ]; then
   APP_SOURCE_DIR="${APP_SOURCE_DIR}/${METEOR_APP_DIR}"
 fi
+
+# Init git to get submodules
+cd "$APP_SOURCE_DIR"
+if [ -f ".gitmodules.dist" ]; then
+  echo ".gitmodules.dist found, copying to .gitmodules..."
+  cp .gitmodules.dist .gitmodules
+
+  echo "Initializing temporary Git repository..."
+  git init
+  
+  echo "Initializing git submodules..."
+  git submodule update --init --recursive
+  
+  echo "Cleaning up temporary Git repository..."
+  rm -rf .git
+else
+  echo "No .gitmodules.dist found, skipping submodule setup."
+fi
+
 
 # Try "$APP_SOURCE_DIR/app/" if meteor app isn't there (the "Iron scaffolding
 # tool" default).
