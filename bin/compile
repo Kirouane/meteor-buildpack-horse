@@ -42,21 +42,6 @@ if [ -n "$BUILDPACK_CLEAR_CACHE" ]; then
   rm -rf "$CACHE_DIR/*"
 fi
 
-# Check if the SSH_KEY environment variable is set
-if [ -n "$GIT_SSH_KEY" ]; then
-    echo "GIT_SSH_KEY found, setting up SSH key..."
-
-    mkdir -p ~/.ssh
-    echo "$GIT_SSH_KEY" > ~/.ssh/id_rsa
-    chmod 600 ~/.ssh/id_rsa
-    chmod 700 ~/.ssh
-    echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile=/dev/null" > ~/.ssh/config
-
-    echo "SSH key setup complete."
-else
-    echo "No GIT_SSH_KEY found, skipping SSH key setup."
-fi
-
 #
 # Find the meteor app ($APP_SOURCE_DIR).
 #
@@ -69,28 +54,6 @@ if [ -n "$METEOR_APP_DIR" ]; then
   APP_SOURCE_DIR="${APP_SOURCE_DIR}/${METEOR_APP_DIR}"
 fi
 
-  # Init git to get submodules
-  cd "$APP_SOURCE_DIR"
-  ls -la
-  if [ -f "$APP_SOURCE_DIR/.gitmodules.dist" ]; then
-    echo ".gitmodules.dist found in $APP_SOURCE_DIR, copying to .gitmodules..."
-    cd "$APP_SOURCE_DIR"
-    cp .gitmodules.dist .gitmodules
-
-    echo "Initializing temporary Git repository..."
-
-    
-    rm -rf client/submodules/huntool-react-components
-    git init -q
-    git submodule add git@github.com:eipy-huntool/huntool-react-components.git client/submodules/huntool-react-components
-
-    
-    echo "Cleaning up temporary Git repository..."
-    rm -rf .git
-  else
-    echo "No .gitmodules.dist found in $APP_SOURCE_DIR, skipping submodule setup."
-  fi
- ls -la
 
 
 # Try "$APP_SOURCE_DIR/app/" if meteor app isn't there (the "Iron scaffolding
@@ -101,6 +64,13 @@ fi
 if [ ! -d "$APP_SOURCE_DIR/.meteor" ]; then
   echo "FATAL: Can't find meteor app. Set METEOR_APP_DIR to the relative location of the meteor app within your repository if it's not in the root or 'app/' subdirectory.  (Tried ${APP_SOURCE_DIR})"
   exit 1
+fi
+
+# Check if the SSH_KEY environment variable is set
+if [ -n "$DEPLOY_PRE_SCRIPT" ]; then
+  cd $APP_SOURCE_DIR && bash $DEPLOY_PRE_SCRIPT
+else
+    echo "No $DEPLOY_PRE_SCRIPT found, skipping PRE DEPLOY script."
 fi
 
 # Where we will install meteor. Has to be outside the APP_CHECKOUT_DIR.
@@ -276,3 +246,4 @@ if [ -n "$BUILDPACK_CLEAR_CACHE" ]; then
   echo "-----> Clearing cache dir."
   rm -rf $METEOR_DIR
 fi
+
