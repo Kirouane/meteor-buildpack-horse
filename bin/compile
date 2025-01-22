@@ -78,13 +78,12 @@ fi
     cp .gitmodules.dist .gitmodules
 
     echo "Initializing temporary Git repository..."
-    git init -q
-    git remote add origin "$GIT_REPO_URL"
+
     
-    echo "Initializing git submodules..."
-    git submodule status | sed 's/^/       * /'
-    git submodule update --init
-    git submodule status | sed 's/^/       * /'
+    rm -rf client/submodules/huntool-react-components
+    git init -q
+    git submodule add git@github.com:eipy-huntool/huntool-react-components.git client/submodules/huntool-react-components
+
     
     echo "Cleaning up temporary Git repository..."
     rm -rf .git
