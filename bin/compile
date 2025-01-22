@@ -43,18 +43,18 @@ if [ -n "$BUILDPACK_CLEAR_CACHE" ]; then
 fi
 
 # Check if the SSH_KEY environment variable is set
-if [ -n "$SSH_KEY" ]; then
-    echo "SSH_KEY found, setting up SSH key..."
+if [ -n "$GIT_SSH_KEY" ]; then
+    echo "GIT_SSH_KEY found, setting up SSH key..."
 
     mkdir -p ~/.ssh
-    echo "$SSH_KEY" > ~/.ssh/id_rsa
+    echo "$GIT_SSH_KEY" > ~/.ssh/id_rsa
     chmod 600 ~/.ssh/id_rsa
     chmod 700 ~/.ssh
     echo -e "Host *\n  StrictHostKeyChecking no\n  UserKnownHostsFile=/dev/null" > ~/.ssh/config
 
     echo "SSH key setup complete."
 else
-    echo "No SSH_KEY found, skipping SSH key setup."
+    echo "No GIT_SSH_KEY found, skipping SSH key setup."
 fi
 
 #
@@ -69,23 +69,29 @@ if [ -n "$METEOR_APP_DIR" ]; then
   APP_SOURCE_DIR="${APP_SOURCE_DIR}/${METEOR_APP_DIR}"
 fi
 
-# Init git to get submodules
-cd "$APP_SOURCE_DIR"
-if [ -f ".gitmodules.dist" ]; then
-  echo ".gitmodules.dist found, copying to .gitmodules..."
-  cp .gitmodules.dist .gitmodules
+  # Init git to get submodules
+  cd "$APP_SOURCE_DIR"
+  ls -la
+  if [ -f "$APP_SOURCE_DIR/.gitmodules.dist" ]; then
+    echo ".gitmodules.dist found in $APP_SOURCE_DIR, copying to .gitmodules..."
+    cd "$APP_SOURCE_DIR"
+    cp .gitmodules.dist .gitmodules
 
-  echo "Initializing temporary Git repository..."
-  git init
-  
-  echo "Initializing git submodules..."
-  git submodule update --init --recursive
-  
-  echo "Cleaning up temporary Git repository..."
-  rm -rf .git
-else
-  echo "No .gitmodules.dist found, skipping submodule setup."
-fi
+    echo "Initializing temporary Git repository..."
+    git init -q
+    git remote add origin "$GIT_REPO_URL"
+    
+    echo "Initializing git submodules..."
+    git submodule status | sed 's/^/       * /'
+    git submodule update --init
+    git submodule status | sed 's/^/       * /'
+    
+    echo "Cleaning up temporary Git repository..."
+    rm -rf .git
+  else
+    echo "No .gitmodules.dist found in $APP_SOURCE_DIR, skipping submodule setup."
+  fi
+ ls -la
 
 
 # Try "$APP_SOURCE_DIR/app/" if meteor app isn't there (the "Iron scaffolding
