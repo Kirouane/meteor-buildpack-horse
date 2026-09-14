@@ -181,6 +181,10 @@ echo "----->    and npm: `$METEOR_NPM --version`"
 # may need devDependencies (e.g. webpack) in order to build the meteor app.
 if [ -e "$APP_SOURCE_DIR"/package.json ]; then
   $METEOR_NPM install
+  # Same convention as the Node buildpack: lets the app build static assets
+  # (e.g. a Storybook into public/) with devDependencies present, before `meteor build`.
+  echo "-----> Running heroku-postbuild (if present)"
+  $METEOR_NPM run heroku-postbuild --if-present
 fi
 
 # Related to https://github.com/meteor/meteor/issues/2796 and
