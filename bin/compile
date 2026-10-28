@@ -205,8 +205,27 @@ fi
 echo "-----> Building Meteor app with ROOT_URL: $ROOT_URL"
 BUNDLE_DEST=`mktemp -d "$BUILDPACK_DIR/build-XXXX"`
 
-# The actual invocation of `meteor build`!
-METEOR build $BUILD_OPTIONS --server $ROOT_URL $SERVER_ONLY_FLAG --directory $BUNDLE_DEST
+# The actual invocation of `meteor build`! It downloads the app's packages from
+# warehouse.meteor.com and dies on the first network error, as Meteor's own
+# retry never runs (the try/catch of getUrlWithResuming misses the rejection of
+# the async request). The packages already downloaded stay in $METEOR_DIR, so
+# another attempt only fetches the missing ones. Other failures exit at once.
+METEOR_BUILD_LOG=`mktemp`
+for ATTEMPT in 1 2 3 4 5; do
+  set +e
+  METEOR build $BUILD_OPTIONS --server $ROOT_URL $SERVER_ONLY_FLAG --directory $BUNDLE_DEST 2>&1 | tee "$METEOR_BUILD_LOG"
+  METEOR_BUILD_STATUS=${PIPESTATUS[0]}
+  set -e
+  if [ $METEOR_BUILD_STATUS -eq 0 ]; then
+    break
+  fi
+  if [ $ATTEMPT -eq 5 ] || ! grep -qE 'ESOCKETTIMEDOUT|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EPIPE|EAI_AGAIN|ENOTFOUND|socket hang up' "$METEOR_BUILD_LOG"; then
+    exit $METEOR_BUILD_STATUS
+  fi
+  echo "-----> meteor build hit a network error (attempt $ATTEMPT of 5), retrying in 15s"
+  sleep 15
+done
+rm -f "$METEOR_BUILD_LOG"
 
 echo "-----> Moving built slug to $COMPILE_DIR/app"
 mv $BUNDLE_DEST/bundle "$COMPILE_DIR/app"
